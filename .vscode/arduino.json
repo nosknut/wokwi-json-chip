@@ -1,0 +1,7 @@
+{
+    "board": "arduino:avr:mega",
+    "programmer": "avrisp",
+    "output": ".arduino/output",
+    "sketch": "demo/demo.ino",
+    "configuration": "cpu=atmega2560"
+}
