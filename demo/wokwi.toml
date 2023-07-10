@@ -1,0 +1,9 @@
+[wokwi]
+version = 1
+gdbServerPort = 3_333
+elf = "../.arduino/output/demo.ino.elf"
+firmware = "../.arduino/output/demo.ino.hex"
+
+[[chip]]
+name = "uart-json"
+binary = "target/wasm32-unknown-unknown/release/chip_uart_json.wasm"

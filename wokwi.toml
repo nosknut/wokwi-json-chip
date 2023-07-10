@@ -1,0 +1,9 @@
+[wokwi]
+version = 1
+gdbServerPort = 3333
+elf = "demo/firmware.elf"
+firmware = "demo/firmware.hex"
+
+[[chip]]
+name = 'uart-json'  # To use the chip in diagram.json, add a part with "uart-json" type.
+binary = 'target/wasm32-unknown-unknown/release/chip_uart_json.wasm'
