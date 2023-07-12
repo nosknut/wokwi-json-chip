@@ -1,44 +1,42 @@
+#include "AsyncMacros.h"
 #include <ArduinoJson.h>
 
-void printReceivedJson(DynamicJsonDocument &jsonDoc)
+DynamicJsonDocument servoStatusJsonDoc(500);
+
+DynamicJsonDocument getServoInitCommend()
 {
-    String sender = jsonDoc["sender"].as<String>();
-    String receiver = jsonDoc["receiver"].as<String>();
-    String topic = jsonDoc["topic"].as<String>();
-
-    int temperature = jsonDoc["temperature"].as<int>();
-
-    Serial.println("Received data:");
-
-    Serial.println("Sender: " + sender);
-    Serial.println("Receiver: " + receiver);
-    Serial.println("Topic: " + topic);
-    Serial.println("Temperature: " + String(temperature));
+    DynamicJsonDocument jsonDoc(500);
+    jsonDoc["topic"] = "servo/init";
+    return jsonDoc;
 }
 
-void sendJson() {
+DynamicJsonDocument getServoPositionCommend(int position)
+{
     DynamicJsonDocument jsonDoc(500);
+    jsonDoc["topic"] = "servo/target-position";
+    jsonDoc["position"] = position;
+    return jsonDoc;
+}
 
-    jsonDoc["sender"] = "themometer";
-    jsonDoc["receiver"] = "webserver";
-    jsonDoc["topic"] = "thermometer-sensor-data";
-    jsonDoc["temperature"] = 2;
+void sendJson(DynamicJsonDocument jsonDoc)
+{
+    serializeJson(jsonDoc, Serial1);
+}
 
-    String jsonText;
-    serializeJson(jsonDoc, jsonText);
+void processReceivedJson(DynamicJsonDocument &jsonDoc)
+{
+    String topic = jsonDoc["topic"].as<String>();
 
-    Serial1.print(jsonText);
-
-    // Alternatively this can be done without the string
-    // serializeJson(jsonDoc, Serial1);
+    if (topic == "servo/status")
+    {
+        servoStatusJsonDoc = jsonDoc;
+    }
 }
 
 void setup()
 {
     Serial.begin(115200);
     Serial1.begin(115200);
-
-    sendJson();
 }
 
 void readSerial()
@@ -63,11 +61,65 @@ void readSerial()
             return;
         }
 
-        printReceivedJson(jsonDoc);
+        processReceivedJson(jsonDoc);
     }
+}
+
+bool initServoSequence()
+{
+    asyncBegin({
+        asyncRun({
+            Serial.println("Initializing servo");
+            sendJson(getServoInitCommend());
+        });
+
+        // Wait for the servo to respond with a status message
+        asyncWhile(!servoStatusJsonDoc.containsKey("position"), {
+            asyncDelay(1000);
+        });
+
+        asyncRun({
+            return true;
+        });
+    });
+    return false;
+}
+
+bool servoGoToPositionSequence(int position)
+{
+    asyncBegin({
+        asyncRun({
+            Serial.println("Moving servo to " + String(position) + " degrees");
+            sendJson(getServoPositionCommend(position));
+        });
+
+        // Wait for the servo to reach the target position
+        asyncWhile(servoStatusJsonDoc["position"].as<int>() != position, {
+            asyncDelay(1000);
+        });
+
+        asyncRun({
+            return true;
+        });
+    });
+    return false;
+}
+
+void updateSequence()
+{
+    asyncBegin({
+        asyncWhile(!initServoSequence(), {});
+
+        asyncWhile(true, {
+            asyncWhile(!servoGoToPositionSequence(0), {});
+            asyncWhile(!servoGoToPositionSequence(180), {});
+        });
+    });
 }
 
 void loop()
 {
     readSerial();
+
+    updateSequence();
 }
