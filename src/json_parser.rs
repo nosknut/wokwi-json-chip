@@ -33,13 +33,11 @@ impl JsonParser {
             return Ok(None);
         }
 
-        if self.num_curly_braces == 0 {
-            if c != '{' {
-                if !self.json.is_empty() {
-                    self.json.clear();
-                }
-                return Ok(None);
+        if self.num_curly_braces == 0 && c != '{' {
+            if !self.json.is_empty() {
+                self.json.clear();
             }
+            return Ok(None);
         }
 
         if c == '{' {
@@ -59,5 +57,11 @@ impl JsonParser {
         }
 
         Ok(None)
+    }
+}
+
+impl Default for JsonParser {
+    fn default() -> Self {
+        Self::new()
     }
 }

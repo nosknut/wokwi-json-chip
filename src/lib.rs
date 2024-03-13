@@ -8,12 +8,13 @@ use uart::{debug_print_string, Uart};
 static mut PARSER: Option<JsonParser> = None;
 
 #[no_mangle]
+#[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn chipInit() {
     PARSER = Some(JsonParser::new());
 
     Uart::init("TX", "RX", 115200, |uart, _c| {
         if let Ok(Some(json)) = PARSER.as_mut().unwrap().parse_uart(uart) {
-            debug_print_string(format!("Received: {}", json.to_string()));
+            debug_print_string(format!("Received: {:?}", json));
 
             let response = match json["topic"].as_str().unwrap() {
                 "servo/init" => {

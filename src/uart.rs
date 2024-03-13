@@ -55,9 +55,9 @@ impl UartManager {
 
     fn get(id: UartId) -> Option<(&'static mut Uart, &'static mut UartOnReadHandler)> {
         let Some((uart, on_read)) = UartManager::get_instances().get_mut(&id) else {
-                debug_print_string(format!("UART with id {} no longer exists", id));
-                return None;
-            };
+            debug_print_string(format!("UART with id {} no longer exists", id));
+            return None;
+        };
 
         Some((uart, on_read))
     }
@@ -88,13 +88,7 @@ impl Uart {
         if !self.out_buffer.is_empty() {
             let data = self.out_buffer.clone();
 
-            let did_write = unsafe {
-                uartWrite(
-                    self.device_id,
-                    data.as_ptr() as *const u8,
-                    data.len() as u32,
-                )
-            };
+            let did_write = unsafe { uartWrite(self.device_id, data.as_ptr(), data.len() as u32) };
 
             if did_write {
                 self.out_buffer.clear();
@@ -133,7 +127,7 @@ impl Uart {
 
         debug_print_string(format!("Initialized on uart port: {}!", device_id));
 
-        return id;
+        id
     }
 
     pub fn available(&self) -> u32 {
