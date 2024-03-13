@@ -10,9 +10,9 @@ pub struct JsonParser {
 }
 
 impl JsonParser {
-    pub fn new() -> JsonParser {
+    pub const fn new() -> JsonParser {
         JsonParser {
-            json: String::from(""),
+            json: String::new(),
             num_curly_braces: 0,
         }
     }
