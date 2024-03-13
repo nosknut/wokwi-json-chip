@@ -63,7 +63,6 @@ impl UartManager {
         if let Some((uart, on_read)) = UartManager::get(user_data) {
             uart.in_buffer.push_back(byte);
             on_read(uart, byte);
-            uart.update_out_buffer();
         };
     }
 
