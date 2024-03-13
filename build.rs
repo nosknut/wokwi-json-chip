@@ -1,18 +1,15 @@
 use std::env;
 use std::path::Path;
-use std::path::PathBuf;
 
 fn main() {
     println!("cargo:rerun-if-changed=wokwi-chip.json");
 
     let manifest_dir_string = env::var("CARGO_MANIFEST_DIR").unwrap();
     let build_type = env::var("PROFILE").unwrap();
-    let output_path = PathBuf::from(
-        Path::new(&manifest_dir_string)
-            .join("target")
-            .join("wasm32-unknown-unknown")
-            .join(build_type),
-    );
+    let output_path = Path::new(&manifest_dir_string)
+        .join("target")
+        .join("wasm32-unknown-unknown")
+        .join(build_type);
 
     let json_name = format!("{}.json", env::var("CARGO_PKG_NAME").unwrap());
     let input_file = Path::new(&manifest_dir_string).join("wokwi-chip.json");
