@@ -1,7 +1,7 @@
 use std::{
-    collections::HashMap,
-    collections::VecDeque,
+    collections::{HashMap, VecDeque},
     ffi::{c_void, CString},
+    mem::MaybeUninit,
 };
 
 use wokwi_chip_ll::{debugPrint, pinInit, uartWrite, UARTConfig, UARTDevId, INPUT, INPUT_PULLUP};
@@ -29,18 +29,13 @@ pub struct Uart {
     out_buffer: Vec<Byte>,
 }
 
-static mut INSTANCES: Option<HashMap<UartId, (Uart, UartOnReadHandler)>> = None;
+pub(crate) static mut INSTANCES: MaybeUninit<HashMap<UartId, (Uart, UartOnReadHandler)>> =
+    MaybeUninit::uninit();
 
 struct UartManager {}
 impl UartManager {
     fn get_instances() -> &'static mut HashMap<UartId, (Uart, UartOnReadHandler)> {
-        unsafe {
-            if INSTANCES.is_none() {
-                INSTANCES = Some(HashMap::new());
-            }
-
-            INSTANCES.as_mut().unwrap()
-        }
+        unsafe { INSTANCES.assume_init_mut() }
     }
 }
 
