@@ -59,20 +59,16 @@ impl UartManager {
 }
 
 impl UartManager {
-    fn get_id(user_data: *const c_void) -> UartId {
-        user_data as UartId
-    }
-
-    fn on_uart_rx_data(user_data: *const c_void, byte: u8) {
-        if let Some((uart, on_read)) = UartManager::get(UartManager::get_id(user_data)) {
+    fn on_uart_rx_data(user_data: UartId, byte: u8) {
+        if let Some((uart, on_read)) = UartManager::get(user_data) {
             uart.in_buffer.push_back(byte);
             on_read(uart, byte);
             uart.update_out_buffer();
         };
     }
 
-    fn on_uart_write_done(user_data: *const c_void) {
-        if let Some((uart, _)) = UartManager::get(UartManager::get_id(user_data)) {
+    fn on_uart_write_done(user_data: UartId) {
+        if let Some((uart, _)) = UartManager::get(user_data) {
             uart.update_out_buffer();
         }
     }
