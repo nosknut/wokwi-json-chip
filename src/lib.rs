@@ -1,19 +1,15 @@
 pub mod json_parser;
 pub mod uart;
 
-use std::{collections::HashMap, mem::MaybeUninit};
-
 use json_parser::JsonParser;
 
-use uart::{debug_print_string, Uart, INSTANCES};
+use uart::{debug_print_string, Uart};
 
 static mut PARSER: JsonParser = JsonParser::new();
 
 #[no_mangle]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn chipInit() {
-    INSTANCES = MaybeUninit::new(HashMap::new());
-
     Uart::init("TX", "RX", 115200, |uart, _c| {
         if let Ok(Some(json)) = PARSER.parse_uart(uart) {
             debug_print_string(format!("Received: {:?}", json));

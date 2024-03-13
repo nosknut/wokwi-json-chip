@@ -1,7 +1,6 @@
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::VecDeque,
     ffi::{c_void, CString},
-    mem::MaybeUninit,
 };
 
 use wokwi_chip_ll::{debugPrint, pinInit, uartWrite, UARTConfig, UARTDevId, INPUT, INPUT_PULLUP};
@@ -22,54 +21,32 @@ pub type UartOnReadHandler = fn(uart: &mut Uart, byte: Byte);
 
 #[allow(dead_code)]
 pub struct Uart {
-    id: UartId,
-    config: UARTConfig,
-    device_id: UARTDevId,
+    device_id: UartId,
     in_buffer: VecDeque<Byte>,
     out_buffer: Vec<Byte>,
+    on_read: UartOnReadHandler,
 }
 
-pub(crate) static mut INSTANCES: MaybeUninit<HashMap<UartId, (Uart, UartOnReadHandler)>> =
-    MaybeUninit::uninit();
-
-struct UartManager {}
-impl UartManager {
-    fn get_instances() -> &'static mut HashMap<UartId, (Uart, UartOnReadHandler)> {
-        unsafe { INSTANCES.assume_init_mut() }
-    }
-}
+struct UartManager;
 
 impl UartManager {
-    fn get_next_id() -> UartId {
-        UartManager::get_instances().len() as UartId
-    }
-
-    fn register(uart: Uart, on_read: UartOnReadHandler) {
-        UartManager::get_instances().insert(uart.id, (uart, on_read));
-    }
-
-    fn get(id: UartId) -> Option<(&'static mut Uart, &'static mut UartOnReadHandler)> {
-        let Some((uart, on_read)) = UartManager::get_instances().get_mut(&id) else {
-            debug_print_string(format!("UART with id {} no longer exists", id));
-            return None;
+    fn on_uart_rx_data(ptr: *mut Uart, byte: u8) {
+        let Some(uart) = (unsafe { ptr.as_mut() }) else {
+            debug_print_string("Missing uart detected".to_string());
+            return;
         };
 
-        Some((uart, on_read))
+        uart.in_buffer.push_back(byte);
+        (uart.on_read)(uart, byte);
     }
-}
 
-impl UartManager {
-    fn on_uart_rx_data(user_data: UartId, byte: u8) {
-        if let Some((uart, on_read)) = UartManager::get(user_data) {
-            uart.in_buffer.push_back(byte);
-            on_read(uart, byte);
+    fn on_uart_write_done(ptr: *mut Uart) {
+        let Some(uart) = (unsafe { ptr.as_mut() }) else {
+            debug_print_string("Missing uart detected".to_string());
+            return;
         };
-    }
 
-    fn on_uart_write_done(user_data: UartId) {
-        if let Some((uart, _)) = UartManager::get(user_data) {
-            uart.update_out_buffer();
-        }
+        uart.update_out_buffer();
     }
 }
 
@@ -78,6 +55,7 @@ impl Uart {
         if !self.out_buffer.is_empty() {
             let data = self.out_buffer.clone();
 
+            debug_print_string(format!("{}", self.device_id));
             let did_write = unsafe { uartWrite(self.device_id, data.as_ptr(), data.len() as u32) };
 
             if did_write {
@@ -88,36 +66,34 @@ impl Uart {
 }
 
 impl Uart {
-    pub fn init(pin_tx: &str, pin_rx: &str, baud_rate: u32, on_read: UartOnReadHandler) -> UartId {
+    pub fn init(pin_tx: &str, pin_rx: &str, baud_rate: u32, on_read: UartOnReadHandler) {
         debug_print_string("Initializing ...".to_string());
 
-        let id: UartId = UartManager::get_next_id();
+        let uart = Uart {
+            device_id: u32::MAX,
+            in_buffer: VecDeque::new(),
+            out_buffer: Vec::new(),
+            on_read,
+        };
+
+        let ptr = make_ptr(uart);
 
         let config = UARTConfig {
             rx: unsafe { pinInit(CString::new(pin_rx).unwrap().into_raw(), INPUT_PULLUP) },
             tx: unsafe { pinInit(CString::new(pin_tx).unwrap().into_raw(), INPUT) },
-            user_data: id as *const c_void,
+            user_data: ptr as *const c_void,
             baud_rate,
             rx_data: UartManager::on_uart_rx_data as *const c_void,
             write_done: UartManager::on_uart_write_done as *const c_void,
         };
 
+        let uart = unsafe { ptr.as_mut().unwrap() };
+
         let device_id = unsafe { uartInit(&config) };
 
-        UartManager::register(
-            Uart {
-                id,
-                config,
-                device_id,
-                in_buffer: VecDeque::new(),
-                out_buffer: Vec::new(),
-            },
-            on_read,
-        );
+        uart.device_id = device_id;
 
         debug_print_string(format!("Initialized on uart port: {}!", device_id));
-
-        id
     }
 
     pub fn available(&self) -> u32 {
@@ -171,4 +147,11 @@ impl Uart {
     pub fn write_string(&mut self, data: String) {
         self.write_bytes(data.into_bytes());
     }
+}
+
+/// Makes a pointer from any data
+///
+/// Uses box leak
+fn make_ptr<T>(data: T) -> *mut T {
+    Box::leak(Box::new(data))
 }
