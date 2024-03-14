@@ -3,7 +3,7 @@ use std::ffi::c_void;
 use wokwi_chip_ll::{PinId, UARTConfig};
 
 use crate::{
-    traits::Uart,
+    traits::{Uart, UartJson, UartJsonInner},
     uart_tx::UartTX,
     utils::{debug_print_string, uartInit},
 };
@@ -17,6 +17,10 @@ pub struct UartSettings {
 
 pub fn init_uart<T: Uart>(uart: T, settings: UartSettings) {
     UartWrapper::init(uart, settings)
+}
+
+pub fn init_uart_json<T: UartJson>(uart: T, settings: UartSettings) {
+    UartWrapper::init(UartJsonInner::new(uart), settings)
 }
 
 // Note: ?Sized removes the size requirement from T

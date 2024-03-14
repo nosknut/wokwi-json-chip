@@ -9,9 +9,9 @@ use serde_json::Value;
 use wokwi_chip_ll::{pinInit, INPUT, INPUT_PULLUP};
 
 use crate::{
-    traits::Uart,
+    traits::UartJson,
     uart_tx::UartTX,
-    uart_wrapper::{init_uart, UartSettings},
+    uart_wrapper::{init_uart_json, UartSettings},
     utils::debug_print_string,
 };
 
@@ -24,17 +24,13 @@ pub unsafe extern "C" fn chipInit() {
         baud_rate: 115200,
     };
 
-    init_uart(ServoUart::default(), settings)
+    init_uart_json(ServoUart, settings)
 }
 
-#[derive(Debug, Default)]
-pub struct ServoUart {
-    json: String,
-    indent: i32,
-}
+pub struct ServoUart;
 
-impl ServoUart {
-    fn on_json_parsed(&mut self, transmitter: &mut UartTX, json: Value) {
+impl UartJson for ServoUart {
+    fn rx(&mut self, transmitter: &mut UartTX, json: Value) {
         debug_print_string(format!("Received: {:?}", json));
 
         let response = match json["topic"].as_str().unwrap() {
@@ -60,36 +56,5 @@ impl ServoUart {
 
         debug_print_string(format!("Sent: {}", response));
         transmitter.write_bytes(response.to_string().into_bytes());
-    }
-}
-
-impl Uart for ServoUart {
-    fn rx(&mut self, transmitter: &mut UartTX, byte: u8) {
-        let c = byte as char;
-        self.json.push(c);
-
-        match c {
-            '{' => {
-                self.indent += 1;
-            }
-            '}' => {
-                self.indent -= 1;
-                //NOTE: code below should be here but would be less than readable
-            }
-            _ => {}
-        }
-
-        if self.indent == 0 {
-            let Ok(json) = serde_json::from_str::<Value>(&self.json) else {
-                // To prevent future errors
-                self.json.clear();
-                debug_print_string("JSON seralize error".to_string());
-                return;
-            };
-
-            self.on_json_parsed(transmitter, json);
-
-            self.json.clear();
-        }
     }
 }
