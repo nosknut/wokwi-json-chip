@@ -70,4 +70,9 @@ impl UartTX {
         self.out_buffer.extend(bytes);
         self.try_write();
     }
+
+    /// Write / Transmit a String
+    pub fn write_string(&mut self, string: String) {
+        self.write_bytes(string.into_bytes())
+    }
 }
