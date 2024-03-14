@@ -9,9 +9,7 @@ use serde_json::Value;
 use wokwi_chip_ll::{pinInit, INPUT, INPUT_PULLUP};
 
 use crate::{
-    traits::UartJson,
-    uart_tx::UartTX,
-    uart_wrapper::{init_uart_json, UartPins},
+    traits::UartJson, uart_pins::UartPins, uart_tx::UartTX, uart_wrapper::init_uart_json,
     utils::debug_print_string,
 };
 

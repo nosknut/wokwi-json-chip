@@ -4,6 +4,7 @@
 */
 
 pub mod traits;
+pub mod uart_pins;
 pub mod uart_tx;
 pub mod uart_wrapper;
 pub mod utils;

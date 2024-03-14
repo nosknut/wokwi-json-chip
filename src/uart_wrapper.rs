@@ -1,18 +1,13 @@
 use std::ffi::c_void;
 
-use wokwi_chip_ll::{PinId, UARTConfig};
+use wokwi_chip_ll::UARTConfig;
 
 use crate::{
     traits::{Uart, UartJson, UartJsonInner},
+    uart_pins::UartPins,
     uart_tx::UartTX,
     utils::{debug_print_string, uartInit},
 };
-
-pub struct UartPins {
-    pub rx: PinId,
-    pub tx: PinId,
-    pub baud_rate: u32,
-}
 
 pub fn init_uart<T: Uart>(uart: T, pins: UartPins) {
     UartWrapper::init(uart, pins)
