@@ -3,24 +3,24 @@
     main.rs would require a main however this runs off chipInit()
 */
 
-use std::ffi::CString;
-
 use serde_json::Value;
-use wokwi_chip_ll::{pinInit, INPUT, INPUT_PULLUP};
 
 use crate::{
-    traits::UartJson, uart_pins::UartPins, uart_tx::UartTX, uart_wrapper::init_uart_json,
+    traits::UartJson,
+    uart_pins::{Pin, PinMode, UartPins},
+    uart_tx::UartTX,
+    uart_wrapper::init_uart_json,
     utils::debug_print_string,
 };
 
 #[no_mangle]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn chipInit() {
-    let pins = UartPins {
-        tx: unsafe { pinInit(CString::new("TX").unwrap().into_raw(), INPUT) },
-        rx: unsafe { pinInit(CString::new("RX").unwrap().into_raw(), INPUT_PULLUP) },
-        baud_rate: 115200,
-    };
+    let tx = Pin::new("TX", PinMode::Input);
+    let rx = Pin::new("RX", PinMode::InputPullUp);
+    let baud_rate = 115200;
+
+    let pins = UartPins::new(rx, tx, baud_rate);
 
     init_uart_json(ServoUart, pins)
 }
