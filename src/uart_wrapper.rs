@@ -23,8 +23,7 @@ pub fn init_uart_json<T: UartJson>(uart: T, settings: UartSettings) {
     UartWrapper::init(UartJsonInner::new(uart), settings)
 }
 
-// Note: ?Sized removes the size requirement from T
-struct UartWrapper<T: Uart + Sized> {
+struct UartWrapper<T: Uart> {
     inner: T,
     rx_fn: fn(&mut T, &mut UartTX, u8),
 
