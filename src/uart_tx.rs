@@ -1,6 +1,6 @@
 use wokwi_chip_ll::uartWrite;
 
-use crate::utils::UartId;
+use crate::utils::UartID;
 
 /// A handler for sending data via Uart
 ///
@@ -11,7 +11,7 @@ pub struct UartTX {
     /// Default for moments will be u32::MAX before the id is assigned.
     ///
     /// Look at the init code for more info
-    device_id: UartId,
+    device_id: UartID,
     /// The out/TX data buffer
     out_buffer: Vec<u8>,
 }
@@ -30,7 +30,7 @@ impl UartTX {
     }
 
     /// Updates device id
-    pub(crate) fn update_id(&mut self, device_id: UartId) {
+    pub(crate) fn update_id(&mut self, device_id: UartID) {
         self.device_id = device_id
     }
 
