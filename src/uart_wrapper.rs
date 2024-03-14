@@ -19,18 +19,14 @@ pub fn init_uart_json<T: UartJson>(uart: T, pins: UartPins) {
 
 struct UartWrapper<T: Uart> {
     inner: T,
-    rx_fn: fn(&mut T, &mut UartTX, u8),
 
     tx: UartTX,
 }
 
 impl<T: Uart> UartWrapper<T> {
     fn from_uart(uart: T) -> Self {
-        let rx_fn = T::rx;
-
         Self {
             inner: uart,
-            rx_fn,
 
             tx: UartTX::new(),
         }
@@ -68,7 +64,7 @@ impl<T: Uart> UartWrapper<T> {
         };
 
         // uart.in_buffer.push_back(byte);
-        (uart.rx_fn)(&mut uart.inner, &mut uart.tx, byte);
+        uart.inner.rx(&mut uart.tx, byte);
     }
 
     fn on_uart_write_done(ptr: *mut Self) {
