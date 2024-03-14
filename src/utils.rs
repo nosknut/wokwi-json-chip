@@ -3,7 +3,6 @@ use std::ffi::CString;
 use wokwi_chip_ll::{debugPrint, UARTConfig, UARTDevId};
 
 /// Uart device ID
-//TODO: make wrapper
 pub type UartID = u32;
 
 extern "C" {
