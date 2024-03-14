@@ -72,21 +72,20 @@ impl<T: UartJson> Uart for UartJsonInner<T> {
 
         // Check if indent was reset to zero aka the last {} was closed
         if self.indent == 0 {
+            // Rust to my knowledge does not have a easy way of taking and clearing the json
+            // However this takes self.json and replaces it with the default aka ""
+            let string = std::mem::take(&mut self.json);
+
             // Check if the json parsed properly
-            let Ok(json) = serde_json::from_str::<Value>(&self.json) else {
+            let Ok(json) = serde_json::from_str::<Value>(&string) else {
                 // If it doesn't
-                // clear the json string to prevent future errors
-                let fail = self.json.drain(..).collect::<String>();
                 // use error callback on string that errored and return
-                self.inner.err(transmitter, fail);
+                self.inner.err(transmitter, string);
                 return;
             };
 
             // If json is parsed properly use rx callback
             self.inner.rx(transmitter, json);
-
-            // Clear json to prevent double reads
-            self.json.clear();
         }
     }
 }
