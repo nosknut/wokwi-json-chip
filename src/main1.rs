@@ -11,20 +11,20 @@ use wokwi_chip_ll::{pinInit, INPUT, INPUT_PULLUP};
 use crate::{
     traits::UartJson,
     uart_tx::UartTX,
-    uart_wrapper::{init_uart_json, UartSettings},
+    uart_wrapper::{init_uart_json, UartPins},
     utils::debug_print_string,
 };
 
 #[no_mangle]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn chipInit() {
-    let settings = UartSettings {
+    let pins = UartPins {
         tx: unsafe { pinInit(CString::new("TX").unwrap().into_raw(), INPUT) },
         rx: unsafe { pinInit(CString::new("RX").unwrap().into_raw(), INPUT_PULLUP) },
         baud_rate: 115200,
     };
 
-    init_uart_json(ServoUart, settings)
+    init_uart_json(ServoUart, pins)
 }
 
 pub struct ServoUart;
