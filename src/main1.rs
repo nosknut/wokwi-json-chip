@@ -3,43 +3,93 @@
     main.rs would require a main however this runs off chipInit()
 */
 
-use crate::{
-    json_parser::JsonParser,
-    uart::{debug_print_string, Uart},
-};
+use std::ffi::CString;
 
-static mut PARSER: JsonParser = JsonParser::new();
+use serde_json::Value;
+use wokwi_chip_ll::{pinInit, INPUT, INPUT_PULLUP};
+
+use crate::{
+    traits::Uart,
+    uart_tx::UartTX,
+    uart_wrapper::{init_uart, UartSettings},
+    utils::debug_print_string,
+};
 
 #[no_mangle]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn chipInit() {
-    Uart::init("TX", "RX", 115200, |uart, _c| {
-        if let Ok(Some(json)) = PARSER.parse_uart(uart) {
-            debug_print_string(format!("Received: {:?}", json));
+    let settings = UartSettings {
+        tx: unsafe { pinInit(CString::new("TX").unwrap().into_raw(), INPUT) },
+        rx: unsafe { pinInit(CString::new("RX").unwrap().into_raw(), INPUT_PULLUP) },
+        baud_rate: 115200,
+    };
 
-            let response = match json["topic"].as_str().unwrap() {
-                "servo/init" => {
-                    serde_json::json!({
-                        "topic": "servo/status",
-                        "position": 50
-                    })
-                }
-                "servo/target-position" => {
-                    serde_json::json!({
-                        "topic": "servo/status",
-                        "position": json["position"]
-                    })
-                }
-                _ => {
-                    serde_json::json!({
-                        "topic": "servo/error",
-                        "message": format!("Unknown topic: {}", json["topic"].as_str().unwrap_or("None").to_owned())
-                    })
-                }
+    init_uart(ServoUart::default(), settings)
+}
+
+#[derive(Debug, Default)]
+pub struct ServoUart {
+    json: String,
+    indent: i32,
+}
+
+impl ServoUart {
+    fn on_json_parsed(&mut self, transmitter: &mut UartTX, json: Value) {
+        debug_print_string(format!("Received: {:?}", json));
+
+        let response = match json["topic"].as_str().unwrap() {
+            "servo/init" => {
+                serde_json::json!({
+                    "topic": "servo/status",
+                    "position": 50
+                })
+            }
+            "servo/target-position" => {
+                serde_json::json!({
+                    "topic": "servo/status",
+                    "position": json["position"]
+                })
+            }
+            _ => {
+                serde_json::json!({
+                    "topic": "servo/error",
+                    "message": format!("Unknown topic: {}", json["topic"].as_str().unwrap_or("None").to_owned())
+                })
+            }
+        };
+
+        debug_print_string(format!("Sent: {}", response));
+        transmitter.write_bytes(response.to_string().into_bytes());
+    }
+}
+
+impl Uart for ServoUart {
+    fn rx(&mut self, transmitter: &mut UartTX, byte: u8) {
+        let c = byte as char;
+        self.json.push(c);
+
+        match c {
+            '{' => {
+                self.indent += 1;
+            }
+            '}' => {
+                self.indent -= 1;
+                //NOTE: code below should be here but would be less than readable
+            }
+            _ => {}
+        }
+
+        if self.indent == 0 {
+            let Ok(json) = serde_json::from_str::<Value>(&self.json) else {
+                // To prevent future errors
+                self.json.clear();
+                debug_print_string("JSON seralize error".to_string());
+                return;
             };
 
-            debug_print_string(format!("Sent: {}", response));
-            uart.write_string(response.to_string());
+            self.on_json_parsed(transmitter, json);
+
+            self.json.clear();
         }
-    });
+    }
 }
